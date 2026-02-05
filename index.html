@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+<title>Restaurant Order Game</title>
+<style>
+/* =========================================================
+   CSS VARIABLES
+   ========================================================= */
+:root{
+  --btn-size:28vmin;
+  --supply-height:18vmin;
+  --plate-w:25vw;
+  --plate-h:12vw;
+}
+
+/* =========================================================
+   GLOBAL RESET & BASE
+   ========================================================= */
+html,body{
+  height:100%;
+  width:100%;
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  background:#f2dfc4;
+  font-family:system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;
+}
+
+*{
+  box-sizing:border-box;
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  -ms-user-select:none;
+  user-select:none;
+  -webkit-user-drag:none;
+  user-drag:none;
+}
+
+/* =========================================================
+   APP / SCREENS
+   ========================================================= */
+#app{
+  position:fixed;
+  inset:0;
+  display:block;
+  touch-action:none;
+}
+
+#splash{
+  position:absolute;
+  inset:0;
+  background:#080808;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+
+#playBtn{
+  font-size:10vmin;
+  width:40vmin;
+  height:40vmin;
+  padding:0;
+  border-radius:50%;
+  background:#fff;
+  border:0;
+  cursor:pointer;
+}
+
+#game{
+  position:absolute;
+  inset:0;
+  background:radial-gradient(circle at 50% 35%, #f7e6c7 0%, #f2dcc0 60%, #ecd3b0 100%);
+  overflow:hidden;
+}
+
+/* =========================================================
+   MENU / CHARACTER / PLATE
+   ========================================================= */
+#menu{
+  position:absolute;
+  --menu-scale:1;
+  width:calc(22vmin * var(--menu-scale));
+  height:auto;
+  top:35vh;
+  transition:
+    left 700ms cubic-bezier(.2,.9,.3,1),
+    transform 700ms cubic-bezier(.2,.9,.3,1);
+  z-index:30;
+  display:block;
+  visibility:visible;
+  pointer-events:none;
+}
+
+.menu-visible{left:33%;}
+
+#character{
+  position:absolute;
+  height:65vh;
+  width:auto;
+  left:55%;
+  bottom:25%;
+  transform:translateX(-50%);
+  pointer-events:auto;
+  display:block;
+  visibility:visible;
+  z-index:5;
+}
+
+#plate{
+  position:absolute;
+  width:var(--plate-w);
+  height:var(--plate-h);
+  left:55%;
+  top:110vmin;
+  transform:translateX(-50%);
+  background:linear-gradient(180deg,#ffffff 0%, #fbfbfb 40%);
+  border-radius:50%/60%;
+  box-shadow:inset -1.2vmin 0 0 #d7d7d7;
+  display:block;
+  z-index:15;
+}
+
+.plate-hidden{opacity:0;}
+
+/* =========================================================
+   PLATE SLOTS
+   ========================================================= */
+.slot{
+  position:absolute;
+  width:44%;
+  height:100%;
+  top:10%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+  transition:opacity 300ms;
+}
+
+.slot.left{left:5%;}
+.slot.right{right:5%;}
+
+/* =========================================================
+   SPEECH BUBBLE
+   ========================================================= */
+#speech{
+  position:absolute;
+  max-width:36vmin;
+  padding:2vmin;
+  border-radius:2vmin;
+  background:#fff;
+  display:none;
+  box-shadow:0 .6vmin 1vmin rgba(0,0,0,.08);
+  font-size:3.4vmin;
+  line-height:1.1;
+  z-index:40;
+}
+
+#speech .tri{
+  position:absolute;
+  width:3.2vmin;
+  height:3.2vmin;
+  right:-1.1vmin;
+  top:50%;
+  transform:translateY(-50%) rotate(45deg);
+  background:#fff;
+  border-radius:0.4vmin;
+  box-shadow:0 .08vmin .2vmin rgba(0,0,0,.03);
+}
+
+/* =========================================================
+   CONTROLS
+   ========================================================= */
+#controls{
+  position:absolute;
+  right:3vmin;
+  top:3vmin;
+  display:flex;
+  flex-direction:column;
+  gap:1.6vmin;
+  z-index:50;
+}
+
+.ctrl{
+  width:var(--btn-size);
+  height:var(--btn-size);
+  border-radius:50%;
+  border:0;
+  font-size:5vmin;
+  background:#fff;
+  box-shadow:0 .4vmin 1vmin rgba(0,0,0,.08);
+  cursor:pointer;
+}
+
+/* =========================================================
+   SUPPLY AREA
+   ========================================================= */
+#supply-area{
+  position:absolute;
+  left:0;
+  bottom:0;
+  width:100%;
+  height:20%;
+  background:#eee;
+  border-top:2px solid #bbb;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:2vw;
+  z-index:20;
+}
+
+#supply{
+  display:flex;
+  gap:2.2vmin;
+  align-items:center;
+  justify-content:center;
+  transition:transform 2000ms cubic-bezier(.2,.9,.3,1);
+}
+
+#supply.supply-off-right{transform:translateX(120vw);}
+#supply.supply-in{transform:translateX(0);}
+#supply.supply-off-left{transform:translateX(-120vw);}
+
+.supply-slot{
+  position:relative;
+  width:20vmin;
+  height:20vmin;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.supply-slot img{
+  max-width:100%;
+  max-height:100%;
+}
+
+/* =========================================================
+   ITEMS (DRAGGABLE)
+   ========================================================= */
+.item{
+  max-width:100%;
+  max-height:auto;
+  touch-action:none;
+  cursor:grab;
+  will-change:transform,left,top;
+}
+
+.item.dragging{
+  cursor:grabbing;
+  transition:none;
+}
+
+.hidden{opacity:0;}
+
+/* =========================================================
+   TABLES / SEATING
+   ========================================================= */
+#tables{
+  position:absolute;
+  left:5vw;
+  top:6vmin;
+  width:40vw;
+  display:flex;
+  flex-direction:column;
+  gap:2.2vmin;
+  pointer-events:none;
+}
+
+.table-wrap{
+  position:relative;
+  width:100%;
+  height:12vmin;
+  z-index:0;
+}
+
+.table-chars{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:flex-end;
+  gap:1.2vmin;
+  padding:0 1.6vmin;
+  z-index:1;
+}
+
+.table{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:3.6vmin;
+  background:#7b4a2a;
+  border-radius:1.2vmin;
+  z-index:3;
+}
+
+.table-plates{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:flex-end;
+  gap:1.2vmin;
+  padding:0 1.6vmin;
+  z-index:5;
+}
+
+.seat{
+  position:relative;
+  flex:0 0 calc((100% - 6 * 1.2vmin) / 7);
+  height:100%;
+}
+
+.seat-character{
+  position:absolute;
+  bottom:3.4vmin;
+  left:50%;
+  transform:translateX(-50%);
+  height:7.6vmin;
+  width:auto;
+}
+
+.seat-plate{
+  position:absolute;
+  bottom:1vmin;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:0.4vmin;
+  padding:0.6vmin 0.8vmin;
+  background:#eee;
+  border-radius:50%;
+}
+
+.seat-food{
+  width:2vmin;
+  height:auto;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="splash">
+    <button id="playBtn" aria-label="Play">Play</button>
+  </div>
+
+  <div id="game" aria-hidden="false">
+
+	<div id="tables"></div>
+ 
+    <img id="menu" src="./images/menu.png" alt="menu" draggable="false">
+
+    <img id="character" src="" alt="character" draggable="false">
+
+    <div id="speech" role="status" aria-live="polite">
+      <div class="tri"></div>
+      <div id="speechText" style="pointer-events:none"></div>
+    </div>
+
+    <div id="plate" aria-hidden="false">
+      <div class="slot left" data-slot="0"></div>
+      <div class="slot right" data-slot="1"></div>
+    </div>
+
+    <div id="controls">
+      <button id="giveup" class="ctrl">Give Up<span style="display:block; font-size:50%; margin-top:2px;">あきらめる</span></button>
+      <button id="hint" class="ctrl">Hint</button>
+    </div>
+
+    <!-- STATIC SUPPLY AREA (does not move) -->
+    <div id="supply-area" aria-hidden="false">
+      <div id="supply">
+        <div class="supply-slot" data-index="0"></div>
+        <div class="supply-slot" data-index="1"></div>
+        <div class="supply-slot" data-index="2"></div>
+        <div class="supply-slot" data-index="3"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* DATA */
+const MENU_ITEMS = [
+"barley tea","beef bowl","cake","cheese fondue","coffee","cola","cream puff",
+"curry and rice","donut","French fries","fried chicken","fried egg","fried noodles",
+"green tea","grilled eel","grilled fish","gyoza","hamburger","hotdog","ice cream",
+"jam","jelly","juice","milk","mineral water","miso soup","okonomiyaki","omlet",
+"oolong","pancake","parfait","pie","pizza","potato chips","pudding","ramen","rice",
+"salad","sandwich","sausage","shaved ice","soba","soda","soup","spaghetti","steak",
+"sushi","tea","tempura","toast","tuna bowl","water","yoghurt"
+];
+
+const IMAGES_PATH = "./images/";
+const AUDIO_PATH = "./audio/";
+
+/* ELEMENTS */
+const splash = document.getElementById('splash');
+const playBtn = document.getElementById('playBtn');
+const menuEl = document.getElementById('menu');
+const charEl = document.getElementById('character');
+const plateEl = document.getElementById('plate');
+const supplyEl = document.getElementById('supply');
+const speech = document.getElementById('speech');
+const speechText = document.getElementById('speechText');
+const giveupBtn = document.getElementById('giveup');
+const hintBtn = document.getElementById('hint');
+const slotEls = Array.from(plateEl.querySelectorAll('.slot'));
+
+let servedCount = 0;
+let orderResolved = false;
+
+const MAX_TABLES = 5;
+const PER_TABLE = 7;
+
+ensureTableFor(0);
+let customerSeated = false;
+
+/* STATE */
+let order = [];
+let supplyPool = [];
+let dragged = null;
+let pointerIdForDragged = null;
+let dragStart = null;
+let dragFromSupplyIndex = null;
+let slots = [null,null]; // store item names
+let itemElements = new Map(); // name -> element(s) (can be duplicates) using unique ids
+let running = false;
+let allowTapThreshold = 500; // ms
+let lastPointerDown = 0;
+
+/* UTILS */
+const mustEncode = s => encodeURI(s);
+const audio = (name) => new Audio(`${AUDIO_PATH}${mustEncode(name)}.wav`);
+const imgPath = name => `${IMAGES_PATH}${mustEncode(name)}.png`;
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+
+function preloadAssets(){
+  // minimal preload: create audio objects cached
+  const list = ["idlike","and","start"];
+  list.forEach(n=>{ const a=new Audio(`${AUDIO_PATH}${n}.wav`); });
+  MENU_ITEMS.forEach(n=>{
+    const i = new Image(); i.src = imgPath(n);
+    const a = new Audio(`${AUDIO_PATH}${mustEncode(n)}.wav`);
+  });
+  // preload characters & menu
+  for(const g of ['boy','girl']) for(let i=1;i<=5;i++){
+    const id = String(i).padStart(2,'0');
+    new Image().src = `${IMAGES_PATH}hungry ${g} ${id}.png`;
+    new Image().src = `${IMAGES_PATH}happy ${g} ${id}.png`;
+  }
+  new Image().src = `${IMAGES_PATH}menu.png`;
+}
+
+function createTableWrap(){
+  const wrap = document.createElement('div');
+  wrap.className = 'table-wrap';
+
+  const chars = document.createElement('div');
+  chars.className = 'table-chars';
+
+  const table = document.createElement('div');
+  table.className = 'table';
+
+  const plates = document.createElement('div');
+  plates.className = 'table-plates';
+
+  for(let i=0;i<PER_TABLE;i++){
+    chars.appendChild(makeSeat());
+    plates.appendChild(makeSeat());
+  }
+
+  wrap.append(chars, table, plates);
+  return wrap;
+}
+
+function ensureTableFor(index){
+  const host = document.getElementById('tables');
+
+  while(host.children.length <= index){
+    host.appendChild(createTableWrap());
+  }
+}
+
+function createMealSnapshot(){
+  const char = document.createElement('img');
+  char.src = charEl.src;
+  char.className = 'seat-character';
+
+  const plate = document.createElement('div');
+  plate.className = 'seat-plate';
+
+  slots.forEach(s=>{
+    if(!s) return;
+    const img = document.createElement('img');
+    img.src = document.querySelector(`img.item[data-uid="${s.uid}"]`)?.src;
+    img.className = 'seat-food';
+    plate.appendChild(img);
+  });
+
+  return { char, plate };
+}
+
+function makeSeat(){
+  const seat = document.createElement('div');
+  seat.className = 'seat';
+  return seat;
+}
+
+function addServedCustomer(){
+  if(servedCount >= MAX_TABLES * PER_TABLE) return;
+
+  const tableIndex = Math.floor(servedCount / PER_TABLE);
+  const seatIndex  = servedCount % PER_TABLE;
+
+  ensureTableFor(tableIndex);
+
+  const wrap   = document.getElementById('tables').children[tableIndex];
+  const chars  = wrap.querySelector('.table-chars').children[seatIndex];
+  const plates = wrap.querySelector('.table-plates').children[seatIndex];
+
+  const { char, plate } = createMealSnapshot();
+
+  chars.appendChild(char);
+  plates.appendChild(plate);
+
+  servedCount++;
+}
+
+/* DRAG ANIMATION / MOVEMENT */
+function getRect(el){ return el.getBoundingClientRect(); }
+function animateTo(elem, startRect, targetRect, duration=420){
+  // force fixed positioning at current visual location
+  elem.style.position = 'fixed';
+  elem.style.left = startRect.left + 'px';
+  elem.style.top  = startRect.top  + 'px';
+  elem.style.width  = startRect.width + 'px';
+  elem.style.height = startRect.height + 'px';
+  elem.style.zIndex = 1000;
+  elem.style.pointerEvents = 'none';
+
+  // force layout commit
+  void elem.offsetHeight;
+
+  return new Promise(resolve=>{
+    requestAnimationFrame(()=>{
+      elem.style.transition =
+        `left ${duration}ms cubic-bezier(.2,.9,.3,1),
+         top ${duration}ms cubic-bezier(.2,.9,.3,1),
+         width ${duration}ms cubic-bezier(.2,.9,.3,1),
+         height ${duration}ms cubic-bezier(.2,.9,.3,1)`;
+
+      elem.style.left = targetRect.left + 'px';
+      elem.style.top  = targetRect.top  + 'px';
+      elem.style.width  = targetRect.width + 'px';
+      elem.style.height = targetRect.height + 'px';
+
+      setTimeout(()=>{
+        elem.style.transition = '';
+        elem.style.pointerEvents = '';
+        resolve();
+      }, duration);
+    });
+  });
+}
+
+/* CREATE SUPPLY */
+function makeSupply(pool){
+  // clear existing
+  supplyEl.innerHTML = '';
+  supplyPool = pool.slice();
+
+  pool.forEach((name, idx) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'supply-slot';
+    wrapper.dataset.index = idx;
+
+    const img = document.createElement('img');
+    img.className = 'item';
+    img.src = imgPath(name);
+    img.draggable = false;
+    img.alt = name;
+    img.dataset.name = name;
+    img.dataset.uid = `${name}--${Date.now()}--${idx}`;
+
+    // ensure no leftover inline positioning on newly created element
+    img.style.position = '';
+    img.style.left = '';
+    img.style.top = '';
+    img.style.width = '';
+    img.style.height = '';
+    img.style.transform = '';
+    img.style.opacity = '';
+    img.style.zIndex = '';
+
+    wrapper.appendChild(img);
+    supplyEl.appendChild(wrapper);
+
+    itemElements.set(img.dataset.uid, { el: img, name, homeIndex: idx });
+
+    attachPointerHandlers(img, idx);
+  });
+}
+
+/* POINTER / TAP / DRAG HANDLERS */
+function attachPointerHandlers(img, homeIndex){
+  img.addEventListener('dragstart', e => e.preventDefault()); // block ghost drag
+  let downInfo = null;
+  img.addEventListener('pointerdown', async (ev)=>{
+    ev.preventDefault();
+    img.setPointerCapture(ev.pointerId);
+    lastPointerDown = performance.now();
+    downInfo = {x:ev.clientX,y:ev.clientY,t:performance.now()};
+    pointerIdForDragged = ev.pointerId;
+  });
+  img.addEventListener('pointermove', (ev)=>{
+    if(!downInfo) return;
+    const dx = ev.clientX - downInfo.x;
+    const dy = ev.clientY - downInfo.y;
+    if(!dragged && Math.hypot(dx,dy) > 8){
+      startDrag(img, homeIndex, downInfo.t, ev.pointerId);
+    }
+    if(dragged && dragged.el === img){
+      moveDragged(ev.clientX, ev.clientY);
+    }
+  });
+  img.addEventListener('pointerup', async (ev)=>{
+    img.releasePointerCapture(ev.pointerId);
+    const now = performance.now();
+    const down = downInfo;
+    downInfo = null;
+    if(dragged && dragged.el === img){
+      await endDrag(ev.clientX, ev.clientY);
+    } else {
+      // tap
+// tap
+if(now - (down?.t||0) < allowTapThreshold &&
+    Math.hypot(ev.clientX - (down?.x||0), ev.clientY - (down?.y||0)) < 10){
+
+  if(currentItemAudio && !currentItemAudio.paused) return;
+
+  const name = img.dataset.name;
+  currentItemAudio = audio(name);
+  currentItemAudio.play();
+}
+    }
+  });
+  // cancel on lost pointer
+  img.addEventListener('pointercancel', ()=>{
+    if(dragged && dragged.el === img) {
+      settleBackToSupply(img.dataset.uid);
+    }
+  });
+}
+
+/* DRAG CONTROL */
+function startDrag(img, homeIndex, downTime, pointerId){
+  if(dragged) return;
+
+  dragged = {
+    el: img,
+    homeIndex,
+    uid: img.dataset.uid
+  };
+
+  img.classList.add('dragging');
+
+  const r = img.getBoundingClientRect();
+
+  /* escape overflow:hidden clipping by moving into body */
+  document.body.appendChild(img);
+
+  img.style.position = 'fixed';
+  img.style.left = r.left + 'px';
+  img.style.top  = r.top  + 'px';
+  img.style.width  = r.width + 'px';
+  img.style.height = r.height + 'px';
+  img.style.margin = '0';
+  img.style.transform = 'none';
+  img.style.zIndex = 1000;
+  img.style.pointerEvents = 'auto';
+  img.style.opacity = '0.95';
+
+  /* ensure pointer events continue to the dragged element even when over other elements */
+  try{ img.setPointerCapture(pointerId); }catch(e){}
+}
+
+function moveDragged(clientX, clientY){
+  if(!dragged) return;
+
+  const el = dragged.el;
+
+  const rect = el.getBoundingClientRect();
+  const w = rect.width;
+  const h = rect.height;
+
+  el.style.left = (clientX - w / 2) + 'px';
+  el.style.top  = (clientY - h / 2) + 'px';
+}
+
+async function endDrag(clientX, clientY){
+  if(!dragged) return;
+
+  const el = dragged.el;
+  el.classList.remove('dragging');
+
+  const pt = { x: clientX, y: clientY };
+  const plateRect = getRect(plateEl);
+
+  const overPlate =
+    pt.x >= plateRect.left &&
+    pt.x <= plateRect.right &&
+    pt.y >= plateRect.top &&
+    pt.y <= plateRect.bottom;
+
+  /* determine if element is already on plate */
+  let fromSlotIndex = null;
+  for(let i=0;i<2;i++){
+    if(slots[i] && slots[i].uid === el.dataset.uid){
+      fromSlotIndex = i;
+      slots[i] = null; // temporarily clear
+    }
+  }
+
+  if(overPlate){
+    /* plate full → reject */
+    if(slots[0] && slots[1]){
+      await sleep(450);
+      await settleBackToSupply(el.dataset.uid);
+    } else {
+      const slotIndex = slots[0] ? 1 : 0;
+      await snapToSlot(el, slotIndex);
+      dragged = null;
+      return;
+    }
+  } else {
+    /* not over plate → always float back */
+    await sleep(300);
+    await settleBackToSupply(el.dataset.uid);
+  }
+
+  /* cleanup */
+  el.style.transform = '';
+  el.style.opacity = '';
+  dragged = null;
+}
+
+/* SNAP FUNCTIONS */
+async function snapToSlot(el, slotIndex){
+  if(typeof el === 'string'){
+    const info = itemElements.get(el);
+    if(!info) return;
+    el = info.el;
+  }
+
+  const slotEl = slotEls[slotIndex];
+
+  const start = getRect(el);
+
+  // detach so motion is visible
+  document.body.appendChild(el);
+  el.style.position = 'fixed';
+  el.style.left = start.left + 'px';
+  el.style.top  = start.top  + 'px';
+  el.style.width  = start.width + 'px';
+  el.style.height = start.height + 'px';
+  el.style.zIndex = 1000;
+  el.style.pointerEvents = 'none';
+
+  const target = getRect(slotEl);
+  const targetRect = {
+    left: target.left + target.width/2 - start.width/2,
+    top:  target.top  + target.height/2 - start.height/2,
+    width: start.width,
+    height: start.height
+  };
+
+  await animateTo(el, start, targetRect, 420);
+
+  slotEl.appendChild(el);
+
+/* Center plate items via flexbox and scale proportionally (no distortion). */
+slotEl.style.display = 'flex';
+slotEl.style.alignItems = 'center';
+slotEl.style.justifyContent = 'center';
+
+el.style.position = 'static';
+el.style.transform = 'none';
+el.style.maxWidth = '85%';
+el.style.maxHeight = '100%';
+el.style.width = '100%';
+el.style.height = '100%';
+  el.style.zIndex = 60;
+  el.style.pointerEvents = 'auto';
+  el.style.opacity = '';
+
+  el.classList.remove('dragging');
+  slots[slotIndex] = { name: el.dataset.name, uid: el.dataset.uid };
+
+  checkCorrect();
+}
+
+async function settleBackToSupply(uid){
+  const info = itemElements.get(uid);
+  if(!info) return;
+  const el = info.el;
+
+  const homeSlot =
+    supplyEl.querySelector(`.supply-slot[data-index="${info.homeIndex}"]`);
+  if(!homeSlot) return;
+
+  const start = getRect(el);
+  document.body.appendChild(el);
+
+  el.style.position = 'fixed';
+  el.style.left = start.left + 'px';
+  el.style.top  = start.top  + 'px';
+  el.style.width  = start.width + 'px';
+  el.style.height = start.height + 'px';
+  el.style.zIndex = 1000;
+  el.style.pointerEvents = 'none';
+
+  const target = getRect(homeSlot);
+  const targetRect = {
+    left: target.left + target.width/2 - start.width/2,
+    top:  target.top  + target.height/2 - start.height/2,
+    width: start.width,
+    height: start.height
+  };
+
+  await animateTo(el, start, targetRect, 420);
+
+  homeSlot.appendChild(el);
+
+  el.style.position = '';
+  el.style.left = '';
+  el.style.top = '';
+  el.style.width = '';
+  el.style.height = '';
+  el.style.transform = '';
+  el.style.zIndex = '';
+  el.style.pointerEvents = 'auto';
+  el.style.opacity = '';
+
+  for(let i=0;i<2;i++){
+    if(slots[i] && slots[i].uid === uid) slots[i] = null;
+  }
+
+  dragged = null;
+}
+
+/* ORDER / CHECK */
+function pickOrder(){
+  const a = MENU_ITEMS.slice();
+  const first = a.splice(Math.floor(Math.random()*a.length),1)[0];
+  const second = a.splice(Math.floor(Math.random()*a.length),1)[0];
+  return [first,second];
+}
+
+function checkCorrect(){
+  if(!slots[0] || !slots[1]) return;
+  const names = [slots[0].name, slots[1].name].slice().sort();
+  const goal = order.slice().sort();
+  if(names[0] === goal[0] && names[1] === goal[1]){
+    // correct
+    winSequence();
+  }
+}
+
+/* UI SEQUENCES */
+async function startSequence(){
+  running = true;
+  speech.style.display = 'none';
+giveupBtn.innerHTML = 'Give Up<span style="display:block; font-size:25%; margin-top:2px;">あきらめる</span>';
+  hintBtn.disabled = false;
+  giveupBtn.disabled = false;
+  customerSeated = false;
+  orderResolved = false;
+  slots = [null, null];
+
+supplyEl.style.transition = '';
+supplyEl.style.transform = '';
+supplyEl.classList.remove('supply-in');
+supplyEl.classList.add('supply-off-right');
+
+  /* reset menu */
+  menuEl.style.left = '-28vmin';
+  menuEl.classList.remove('menu-visible');
+
+  /* prepare character and plate offscreen (below) */
+  const gender = Math.random() < 0.5 ? 'boy' : 'girl';
+  const id = String(1 + Math.floor(Math.random()*5)).padStart(2,'0');
+  charEl.src = `${IMAGES_PATH}hungry ${gender} ${id}.png`;
+  charEl.style.transition = 'top 700ms cubic-bezier(.2,.9,.3,1)';
+  plateEl.style.transition = 'top 700ms cubic-bezier(.2,.9,.3,1)';
+
+  charEl.style.top = '110%';
+  plateEl.style.top = '110%';
+
+  /* build order & supply */
+  order = pickOrder();
+  let pool = [order[0], order[1]];
+  while(pool.length < 7){
+    const r = MENU_ITEMS[Math.floor(Math.random()*MENU_ITEMS.length)];
+    if(!pool.includes(r)) pool.push(r);
+  }
+  pool.sort(()=>Math.random()-0.5);
+
+  makeSupply(pool);
+
+/* force new supply to start off-right */
+supplyEl.style.transition = 'none';
+supplyEl.classList.remove('supply-off-left','supply-in');
+supplyEl.classList.add('supply-off-right');
+
+void supplyEl.offsetHeight;
+
+/* animate from right → center */
+supplyEl.style.transition = '';
+requestAnimationFrame(()=>{
+  supplyEl.classList.remove('supply-off-right');
+  supplyEl.classList.add('supply-in');
+});
+
+
+  /* give supply a moment, then bring character+plate up together */
+  await sleep(160);
+  charEl.style.top = '10%';
+  plateEl.style.top = '60vmin';
+
+  await sleep(140);
+  menuEl.style.left = '39vw';
+  menuEl.classList.add('menu-visible');
+
+  await sleep(480);
+  playOrderAudio();
+}
+
+let currentOrderAudio = null;
+let currentItemAudio = null;
+let hintVisible = false;
+
+function playOrderAudio(){
+  if(currentOrderAudio){
+    currentOrderAudio.pause();
+    currentOrderAudio = null;
+  }
+
+  const needAn = new Set(['omlet']);
+  const needA = new Set([
+    'beef bowl','cheese fondue','cream puff','donut','fried egg',
+    'hamburger','hotdog','pancake','parfait','salad','sandwich',
+    'sausage','steak','tuna bowl'
+  ]);
+
+  const seq = [];
+  seq.push({ w:'idlike', gap:220 });
+
+  if(order.length >= 1){
+    if(needAn.has(order[0])) seq.push({ w:'an', gap:-80 });
+    else if(needA.has(order[0])) seq.push({ w:'a', gap:-80 });
+    seq.push({ w:order[0], gap:220 });
+  }
+
+  seq.push({ w:'and', gap:220 });
+
+  if(order.length >= 2){
+    if(needAn.has(order[1])) seq.push({ w:'an', gap:80 });
+    else if(needA.has(order[1])) seq.push({ w:'a', gap:80 });
+    seq.push({ w:order[1], gap:220 });
+  }
+
+  let i = 0;
+  function next(){
+    if(i >= seq.length){
+      currentOrderAudio = null;
+      return;
+    }
+    const { w, gap } = seq[i++];
+    const a = new Audio(`${AUDIO_PATH}${mustEncode(w)}.wav`);
+    currentOrderAudio = a;
+    a.onended = () => setTimeout(next, gap);
+    a.play();
+  }
+  next();
+}
+
+/* WIN / GIVE UP SEQUENCES */
+async function winSequence(){
+  if(orderResolved) return;
+  orderResolved = true;
+
+  hintBtn.disabled = true;
+  giveupBtn.textContent = 'Next';
+  giveupBtn.disabled = true;
+
+  menuEl.style.left = '-28vmin';
+
+  try{ charEl.src = charEl.src.replace('hungry','happy'); }catch(e){}
+  new Audio(`${AUDIO_PATH}thanks.wav`).play();
+
+  await sleep(500);
+
+  addServedCustomer();
+
+  await sleep(200);
+
+  charEl.style.top = '110%';
+  plateEl.style.top = '110%';
+
+  await sleep(760);
+  giveupBtn.disabled = false;
+}
+
+async function giveUpSequence(){
+  if(orderResolved) return;
+  orderResolved = true;
+
+  hintBtn.disabled = true;
+  giveupBtn.disabled = true;
+
+  const correctSlot = [false,false];
+
+  for(let i=0;i<2;i++){
+    const img = slotEls[i].querySelector('img');
+    if(img && order.includes(img.dataset.name)){
+      correctSlot[i] = true;
+      slots[i] = { name: img.dataset.name, uid: img.dataset.uid };
+    }
+  }
+
+  for(let i=0;i<2;i++){
+    const img = slotEls[i].querySelector('img');
+    if(img && !correctSlot[i]){
+      await settleBackToSupply(img.dataset.uid);
+      slots[i] = null;
+    }
+  }
+
+  await sleep(180);
+  playOrderAudio();
+  await sleep(1400);
+
+  for(let i=0;i<2;i++){
+    if(slots[i]) continue;
+    const needed = order.find(n =>
+      !slots.some(s => s && s.name === n)
+    );
+    if(!needed) continue;
+
+    const el = Array.from(document.querySelectorAll('img.item'))
+      .find(e => e.dataset.name === needed && !e.closest('.slot'));
+
+    if(el) await snapToSlot(el, i);
+  }
+
+  menuEl.style.left = '-28vmin';
+  await sleep(260);
+
+  try{ charEl.src = charEl.src.replace('hungry','happy'); }catch(e){}
+
+  await sleep(400);
+
+  addServedCustomer();
+
+  charEl.style.top = '110%';
+  plateEl.style.top = '110%';
+
+  await sleep(760);
+
+  giveupBtn.textContent = 'Next';
+  giveupBtn.disabled = false;
+}
+
+/* RESET / NEW GAME */
+async function resetForNewGame(){
+  running = false;
+  giveupBtn.disabled = true;
+
+  /* hide hint bubble */
+  speech.style.display = 'none';
+
+  /* slide character down offscreen */
+  charEl.style.top = '110%';
+
+  /* remove items from plate (animate them off then remove) */
+  const plateItems = slotEls.flatMap(slot =>
+    Array.from(slot.querySelectorAll('img'))
+  );
+
+  for(const el of plateItems){
+    const start = getRect(el);
+    const target = {
+      left: -200,
+      top: start.top,
+      width: start.width,
+      height: start.height
+    };
+    await animateTo(el, start, target, 420);
+    if(el.parentElement) el.parentElement.removeChild(el);
+    itemElements.delete(el.dataset.uid);
+  }
+
+  slots = [null, null];
+
+  /* animate supply OFF to left (single class change) */
+  supplyEl.classList.remove('supply-in','supply-off-right');
+  supplyEl.classList.add('supply-off-left');
+  
+  /* wait for transition end instead of fixed sleep */
+await new Promise(resolve => {
+  const onEnd = e => { if(e.propertyName==='transform'){ supplyEl.removeEventListener('transitionend', onEnd); resolve(); } };
+  supplyEl.addEventListener('transitionend', onEnd);
+});
+
+  /* clear old supply DOM and map */
+  supplyEl.innerHTML = '';
+  itemElements.clear();
+
+/* clear ALL supply motion state; do NOT pre-position here */
+supplyEl.classList.remove('supply-off-left','supply-in');
+
+  /* reset menu position */
+  menuEl.style.left = '-28vmin';
+  menuEl.classList.remove('menu-visible');
+
+  /* start next round */
+  await sleep(120);
+  startSequence();
+  
+  await sleep(200);
+    giveupBtn.disabled = false;
+}
+
+/* HINT DISPLAY */
+function withArticle(item){
+  // item may already include article
+  if (/^(a|an|the)\s+/i.test(item)) return item;
+  // fallback rule; replace with audio-aligned map if available
+  return (/^[aeiou]/i.test(item) ? 'an ' : 'a ') + item;
+}
+
+/* HINT BUTTON */
+hintBtn.addEventListener('click', ()=>{
+  if(!running) return;
+
+  if(!hintVisible){
+    showHint();
+    playOrderAudio();
+    hintVisible = true;
+  } else {
+    speech.style.display = 'none';
+    hintVisible = false;
+  }
+});
+
+/* HINT DISPLAY */
+function showHint(){
+  const needAn = new Set(['omlet']);
+  const needA = new Set([
+    'beef bowl','cheese fondue','cream puff','donut','fried egg',
+    'hamburger','hotdog','pancake','parfait','salad','sandwich',
+    'sausage','steak','tuna bowl'
+  ]);
+
+  function withArticle(w){
+    if(needAn.has(w)) return `an ${w}`;
+    if(needA.has(w))  return `a ${w}`;
+    return w;
+  }
+
+  speechText.textContent =
+    `I'd like ${withArticle(order[0])} and ${withArticle(order[1])}.`;
+
+  const charRect = getRect(charEl);
+  const bubbleW = Math.min(window.innerWidth*0.36, 320);
+const top = clamp(
+  charRect.top + charRect.height*0.25,
+  window.innerHeight*0.05,
+  window.innerHeight - bubbleW*0.3
+);
+speech.style.left = Math.max(8, charRect.left - bubbleW*1.05) + 'px';
+
+
+
+  speech.style.top = top + 'px';
+  speech.style.width = bubbleW + 'px';
+  speech.style.fontSize =
+    Math.max(14, Math.min(22, window.innerWidth*0.03)) + 'px';
+  speech.style.display = 'block';
+}
+
+/* EVENT BINDINGS */
+playBtn.addEventListener('click', async ()=>{
+  // remove splash, play start.wav, request fullscreen, preload assets, start
+  splash.remove();
+  try{ document.documentElement.requestFullscreen?.(); }catch(e){}
+  new Audio(`${AUDIO_PATH}start.wav`).play();
+  preloadAssets();
+  await sleep(120);
+  startSequence();
+});
+
+hintBtn.addEventListener('click', ()=>{
+  if(!running) return;
+  showHint();
+});
+
+giveupBtn.addEventListener('click', async ()=>{
+  if(giveupBtn.textContent === 'Next'){
+    // new game
+    await resetForNewGame();
+    giveupBtn.textContent = 'Give Up';
+    return;
+  }
+  // otherwise give up
+  await giveUpSequence();
+});
+
+/* disable context menu & selection dragging */
+document.addEventListener('contextmenu', e=>e.preventDefault());
+document.addEventListener('selectstart', e=>e.preventDefault());
+
+/* tapping character replays order */
+charEl.addEventListener('pointerdown', (e)=>{
+  e.preventDefault();
+  const now = performance.now();
+  // simple tap
+  playOrderAudio();
+});
+
+/* initial CSS tweak for supply animation: set transform initial */
+supplyEl.style.transition = 'transform 7777700ms cubic-bezier(.2,.9,.3,1)';
+
+/* expose helper for debugging (no UI) */
+// window._state = ()=>({order,slots});
+
+/* prevent accidental zooming/scrolling on touch devices */
+window.addEventListener('touchmove', e => { if(e.scale && e.scale !== 1) e.preventDefault(); }, {passive:false});
+</script>
+</body>
+</html>
