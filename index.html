@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
 <title>Restaurant Order Game</title>
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/alphonsoore/HungryBoy/main/favicon.png">
 <style>
 /* =========================================================
    CSS VARIABLES
@@ -68,6 +69,7 @@ html,body{
   border:0;
   cursor:pointer;
 }
+#playBtn.loading{font-size:6vmin;}
 
 #game{
   position:absolute;
@@ -441,21 +443,39 @@ const imgPath = name => `${IMAGES_PATH}${mustEncode(name)}.png`;
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
 
-function preloadAssets(){
-  // minimal preload: create audio objects cached
-  const list = ["idlike","and","start"];
-  list.forEach(n=>{ const a=new Audio(`${AUDIO_PATH}${n}.wav`); });
-  MENU_ITEMS.forEach(n=>{
-    const i = new Image(); i.src = imgPath(n);
-    const a = new Audio(`${AUDIO_PATH}${mustEncode(n)}.wav`);
+function preloadAll(){
+  const promises=[];
+
+  const loadImg=src=>new Promise(r=>{
+    const i=new Image();
+    i.onload=r; i.onerror=r;
+    i.src=src;
   });
-  // preload characters & menu
+
+  const loadAud=src=>new Promise(r=>{
+    const a=new Audio();
+    a.oncanplaythrough=r;
+    a.onerror=r;
+    a.src=src;
+  });
+
+  ["idlike","and","start"].forEach(n=>{
+    promises.push(loadAud(`${AUDIO_PATH}${n}.wav`));
+  });
+
+  MENU_ITEMS.forEach(n=>{
+    promises.push(loadImg(imgPath(n)));
+    promises.push(loadAud(`${AUDIO_PATH}${mustEncode(n)}.wav`));
+  });
+
   for(const g of ['boy','girl']) for(let i=1;i<=5;i++){
-    const id = String(i).padStart(2,'0');
-    new Image().src = `${IMAGES_PATH}hungry ${g} ${id}.png`;
-    new Image().src = `${IMAGES_PATH}happy ${g} ${id}.png`;
+    const id=String(i).padStart(2,'0');
+    promises.push(loadImg(`${IMAGES_PATH}hungry ${g} ${id}.png`));
+    promises.push(loadImg(`${IMAGES_PATH}happy ${g} ${id}.png`));
   }
-  new Image().src = `${IMAGES_PATH}menu.png`;
+
+  promises.push(loadImg(`${IMAGES_PATH}menu.png`));
+  return Promise.all(promises);
 }
 
 function createTableWrap(){
@@ -1197,15 +1217,24 @@ speech.style.left = Math.max(8, charRect.left - bubbleW*1.05) + 'px';
 }
 
 /* EVENT BINDINGS */
+playBtn.disabled=true;
+playBtn.textContent="Loading...";
+playBtn.classList.add('loading');
+
+preloadAll().then(()=>{
+  playBtn.disabled=false;
+  playBtn.textContent="Play";
+  playBtn.classList.remove('loading');
+});
+
 playBtn.addEventListener('click', async ()=>{
-  // remove splash, play start.wav, request fullscreen, preload assets, start
   splash.remove();
   try{ document.documentElement.requestFullscreen?.(); }catch(e){}
   new Audio(`${AUDIO_PATH}start.wav`).play();
-  preloadAssets();
   await sleep(120);
   startSequence();
 });
+
 
 hintBtn.addEventListener('click', ()=>{
   if(!running) return;
